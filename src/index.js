@@ -54,10 +54,44 @@ server.registerTool(
     title: "List source calendars",
     description:
       "List the calendars feeding a frame (Google, Apple, WebCal, or Skylight's own), " +
-      "showing which are editable and which receives new events by default.",
+      "showing which are editable and which receives new events by default " +
+      "(`default_for_new_events`). Use skylight_set_default_calendar to change it.",
     inputSchema: { frame_id: FrameId },
   },
   wrap(({ frame_id }) => sky.listSourceCalendars(frame_id)),
+);
+
+server.registerTool(
+  "skylight_set_default_calendar",
+  {
+    title: "Set the default calendar for new events",
+    description:
+      "Choose which source calendar on a frame receives newly created events. " +
+      "Pass a calendar id from skylight_list_calendars — it must be one marked editable. " +
+      "Verifies the change actually took effect before reporting success.",
+    inputSchema: {
+      frame_id: FrameId,
+      calendar_id: z
+        .string()
+        .describe("Source calendar id from skylight_list_calendars (must be editable)"),
+    },
+  },
+  wrap(async ({ frame_id, calendar_id }) => {
+    const cals = await sky.listSourceCalendars(frame_id);
+    const target = cals.find((c) => String(c.id) === String(calendar_id));
+    if (!target) {
+      throw new Error(
+        `No source calendar ${calendar_id} on frame ${frame_id}. ` +
+          `Available: ${cals.map((c) => `${c.id} (${c.label})`).join(", ")}`,
+      );
+    }
+    if (!target.editable) {
+      throw new Error(
+        `"${target.label}" is read-only (kind: ${target.kind}), so it cannot receive new events.`,
+      );
+    }
+    return sky.setDefaultCalendar(frame_id, calendar_id);
+  }),
 );
 
 server.registerTool(

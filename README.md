@@ -15,6 +15,7 @@ and response shapes verified against the live API.
 | `skylight_list_frames` | List frames (calendars/devices) with ids and timezones |
 | `skylight_list_profiles` | Family member profiles on a frame |
 | `skylight_list_calendars` | Source calendars feeding a frame, and which are editable |
+| `skylight_set_default_calendar` | Choose which calendar receives newly created events |
 | `skylight_list_events` | Events between two dates, with assigned profile |
 | `skylight_search_events` | Free-text search over events |
 | `skylight_create_event` | Add an event (timed, all-day, or recurring via RRULE) |
@@ -76,7 +77,25 @@ automatically; a failed refresh falls back to a full login. Override the locatio
   `{"calendar_event": {...}}` wrapper is rejected with
   `422 {"starts_at":["can't be blank"],"summary":["can't be blank"]}`.
 - `after` and `before` must straddle the target date. A same-day range returns nothing;
-  `skylight_list_events` widens and re-filters automatically.
+  `skylight_list_events` widens and re-filters automatically. (`date_min`/`date_max` are
+  accepted as synonyms.)
+- `POST /source_calendars/set_default_for_new_events` takes **`{ id }`**. Passing
+  `{ source_calendar_id }` returns `200` and silently does nothing — a false success.
+  `skylight_set_default_calendar` re-reads the flag afterwards and fails loudly if it
+  did not stick.
+- The default calendar governs the Skylight **app**, not this API. Events created through
+  `skylight_create_event` stay `source: "skylight"` and are **not** synced out to Google
+  even when a default is set (verified over ~2 minutes). To put something on a real Google
+  calendar, write to Google directly; Skylight will sync it in.
+- `category_id` and `category_ids` both work for assigning an event to a family profile.
+
+## Credits
+
+The `{ id }` payload for `set_default_for_new_events` came from
+[chrischall/skylight-mcp](https://github.com/chrischall/skylight-mcp), whose author
+captured it from live iOS app traffic with mitmproxy. That repo is more complete than
+this one — chores, rewards, lists, meals and photo upload — and worth using if you need
+more than calendar management.
 
 ## Testing
 

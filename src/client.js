@@ -120,6 +120,32 @@ export async function searchEvents(frameId, { query, timezone }) {
 }
 
 /**
+ * Make a source calendar the one that receives newly created events.
+ *
+ * The body MUST be `{ id }`. `{ source_calendar_id }` is accepted with a
+ * 200 but silently does nothing — a false success that is easy to mistake
+ * for the endpoint being broken.
+ * Shape confirmed against github.com/chrischall/skylight-mcp, whose author
+ * captured it from live iOS app traffic.
+ */
+export async function setDefaultCalendar(frameId, sourceCalendarId) {
+  await call(`/frames/${frameId}/source_calendars/set_default_for_new_events`, {
+    method: "POST",
+    body: { id: String(sourceCalendarId) },
+  });
+  // The call lies on failure, so confirm the flag actually flipped.
+  const cals = await listSourceCalendars(frameId);
+  const now = cals.find((c) => String(c.id) === String(sourceCalendarId));
+  if (!now?.default_for_new_events) {
+    throw new Error(
+      `Skylight accepted the request but ${sourceCalendarId} is still not the default — ` +
+        `check the id is a source calendar on frame ${frameId}`,
+    );
+  }
+  return { default_calendar: { id: now.id, label: now.label }, calendars: cals };
+}
+
+/**
  * Create an event. `starts_at` / `ends_at` are ISO-8601 with offset
  * (e.g. 2026-10-20T13:30:00-04:00). For an all-day event pass `all_day: true`
  * with plain dates.
