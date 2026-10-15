@@ -71,7 +71,9 @@ server.registerTool(
     inputSchema: {
       frame_id: FrameId,
       after: z.string().describe("Start of range, YYYY-MM-DD (inclusive)"),
-      before: z.string().describe("End of range, YYYY-MM-DD (inclusive)"),
+      before: z
+        .string()
+        .describe("End of range, YYYY-MM-DD (inclusive). May equal `after` for a single day."),
       timezone: z
         .string()
         .optional()
@@ -84,6 +86,16 @@ server.registerTool(
     if (!tz) {
       const frames = await sky.listFrames();
       tz = frames.find((f) => String(f.id) === String(frame_id))?.timezone ?? "America/New_York";
+    }
+    // A zero-width range (after === before) returns nothing, so widen a
+    // same-day query by a day on each side and trim back to the asked-for date.
+    if (after === before) {
+      const d = new Date(`${after}T12:00:00Z`);
+      const shift = (n) => new Date(d.getTime() + n * 864e5).toISOString().slice(0, 10);
+      const wide = await sky.listEvents(frame_id, {
+        after: shift(-1), before: shift(1), timezone: tz,
+      });
+      return wide.filter((e) => String(e.starts_at).slice(0, 10) === after);
     }
     return sky.listEvents(frame_id, { after, before, timezone: tz });
   }),

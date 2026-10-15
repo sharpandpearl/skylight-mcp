@@ -123,11 +123,15 @@ export async function searchEvents(frameId, { query, timezone }) {
  * Create an event. `starts_at` / `ends_at` are ISO-8601 with offset
  * (e.g. 2026-10-20T13:30:00-04:00). For an all-day event pass `all_day: true`
  * with plain dates.
+ *
+ * Fields go at the TOP LEVEL of the body. A Rails-style
+ * `{calendar_event: {...}}` wrapper is rejected with
+ * 422 {"starts_at":["can't be blank"],"summary":["can't be blank"]}.
  */
 export async function createEvent(frameId, event) {
   const r = await call(`/frames/${frameId}/calendar_events`, {
     method: "POST",
-    body: { calendar_event: event },
+    body: event,
   });
   return flatten(r.data ?? r);
 }
@@ -135,7 +139,7 @@ export async function createEvent(frameId, event) {
 export async function updateEvent(frameId, eventId, patch) {
   const r = await call(`/frames/${frameId}/calendar_events/${eventId}`, {
     method: "PUT",
-    body: { calendar_event: patch },
+    body: patch,
   });
   return flatten(r.data ?? r);
 }

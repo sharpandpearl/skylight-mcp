@@ -72,3 +72,17 @@ automatically; a failed refresh falls back to a full login. Override the locatio
   array. `skylight_list_events` resolves this for you.
 - Events sourced from a synced Google calendar report `source: "google"` and can still
   be `editable: true`.
+- `POST`/`PUT` take their fields at the **top level** of the body. A Rails-style
+  `{"calendar_event": {...}}` wrapper is rejected with
+  `422 {"starts_at":["can't be blank"],"summary":["can't be blank"]}`.
+- `after` and `before` must straddle the target date. A same-day range returns nothing;
+  `skylight_list_events` widens and re-filters automatically.
+
+## Testing
+
+`src/write-test.js` round-trips create → read → update → delete against a real frame,
+cleaning up in a `finally` block so a mid-way failure leaves nothing behind:
+
+```bash
+TEST_FRAME_ID=<frame> op run --no-masking -- node src/write-test.js
+```
